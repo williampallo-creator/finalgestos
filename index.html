@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PROYECTO FINAL</title>
+<style>
+body { font-family: Arial; background:#111; color:white; }
+canvas { background:#000; }
+button { padding:10px; margin:5px; }
+</style>
+</head>
+<body>
+
+<h2>TUVN – AUTOMATIZACIÓN E INSTRUMENTACIÓN</h2>
+<p>AUTORES: Christopher Nacimba – William Pallo</p>
+
+<button onclick="connect()">Conectar Bluetooth</button>
+<button onclick="send('MOTOR_ON')">Rearmar Motor</button>
+<button onclick="send('LUB_ON')">Lubricar</button>
+
+<p id="estado">Estado: ---</p>
+
+<canvas id="g1" width="600" height="150"></canvas>
+<canvas id="g2" width="600" height="150"></canvas>
+
+<script>
+let charTX, charRX;
+let g1=[], g2=[];
+
+function connect(){
+  navigator.bluetooth.requestDevice({
+    filters:[{name:"ESP32_GESTOS"}],
+    optionalServices:["12345678-1234-1234-1234-1234567890ab"]
+  }).then(d=>d.gatt.connect())
+  .then(s=>s.getPrimaryService("12345678-1234-1234-1234-1234567890ab"))
+  .then(s=>{
+    s.getCharacteristic("12345678-1234-1234-1234-1234567890ac")
+      .then(c=>{
+        charTX=c;
+        c.startNotifications();
+        c.addEventListener("characteristicvaluechanged", e=>{
+          let txt=new TextDecoder().decode(e.target.value);
+          let [a,b,f]=txt.split(",");
+          document.getElementById("estado").innerText="Falla: "+f;
+        });
+      });
+    s.getCharacteristic("12345678-1234-1234-1234-1234567890ad")
+      .then(c=>charRX=c);
+  });
+}
+
+function send(cmd){
+  if(charRX)
+    charRX.writeValue(new TextEncoder().encode(cmd));
+}
+</script>
+
+</body>
+</html>
